@@ -574,9 +574,9 @@
   </div>
   <div class="count" id="count"></div>
   <div class="grid" id="grid"></div>
-  <footer><span>MADE BY <b style="color:var(--ink)">ᴊʏᴏᴛɪʀᴀɴᴊᴀɴ.....ᐟ</b></span>
-    <nav><a href="https://instagram.com/calisilio" target="_blank" rel="noopener">Instagram</a><a
-        href="https://t.me/calisilio" target="_blank" rel="noopener">Telegram</a></nav>
+  <footer><span>MADE BY <b style="color:var(--ink)">@caliisilio</b></span>
+    <nav><a href="https://instagram.com/caliisilio" target="_blank" rel="noopener">Instagram</a><a
+        href="https://t.me/caliisilio" target="_blank" rel="noopener">Telegram</a></nav>
   </footer>
 
   <dialog id="dlg">
@@ -609,6 +609,8 @@
       {title: "Main notes", url: "https://notes-by-js.notion.site/ebd/40651af1748980e286a0f2ff52905e33", cat: "General", emoji: "📓", desc: "Everything starts here.", t: 1},
       {title: "Internal", url: "https://notes-by-js.notion.site/ebd/40b51af1748980bca83df0571930ff24", cat: "Internal", emoji: "🔒", desc: "Internal notes.", t: 2}];
     const HASH = "72af8dd0b918a468643f5f3ae6d8573517127e0764471abeb5ed5e9bd7db9006", LS = "js-notes-local";
+    /* Own-domain database (Supabase). Fill these two to sync across all devices on your domain. */
+    const SB = {url: "https://jfxaabytuuelyxddwhbb.supabase.co", key: "sb_publishable_g-jS7Q-TlBipiED_pBrFCw_1QrzlyEb"};
     const P = [
       "repeating-linear-gradient(45deg,var(--pat) 0 1px,transparent 1px 8px),repeating-linear-gradient(-45deg,var(--pat) 0 1px,transparent 1px 8px)",
       "linear-gradient(var(--pat) 1px,transparent 1px) 0 0/22px 22px,linear-gradient(90deg,var(--pat) 1px,transparent 1px) 0 0/22px 22px",
@@ -619,30 +621,34 @@
     const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
     const pi = id => [...String(id)].reduce((a, c) => a + c.charCodeAt(0), 0) % 5;
     let mode = "loading", notes = [], shown = [], ed = null, db = null, ready = false, unlocked = false, pending = null, tt;
-    let exp = 0; try {const a = JSON.parse(localStorage.getItem("js-access") || "null"); if (a && a.h === HASH) exp = a.exp || 0} catch (e) { }
+    let kv = "", exp = 0; try {const a = JSON.parse(localStorage.getItem("js-access") || "null"); if (a && a.h === HASH) {exp = a.exp || 0; kv = a.k || ""} } catch (e) { }
     const isOpen = () => unlocked || Date.now() < exp;
     function toast(m) {const t = $("toast"); t.textContent = m; t.classList.add("show"); clearTimeout(tt); tt = setTimeout(() => t.classList.remove("show"), 3200)}
 
     /* storage: shared database when available, otherwise this device only */
     function loadLocal() {mode = "local"; try {const s = localStorage.getItem(LS); notes = s ? JSON.parse(s) : DEFAULTS.map((n, i) => ({...n, id: "d" + i}))} catch (e) {notes = DEFAULTS.map((n, i) => ({...n, id: "d" + i}))} render()}
     const saveLocal = () => {try {localStorage.setItem(LS, JSON.stringify(notes))} catch (e) { } };
-    async function addNote(o) {if (mode === "cloud") await db.collection("notes").add(o); else {notes.unshift({...o, id: "l" + Date.now()}); saveLocal(); render()} }
-    async function updNote(id, o) {if (mode === "cloud") await db.doc("notes/" + id).update(o); else {Object.assign(notes.find(n => n.id === id), o); saveLocal(); render()} }
-    async function delNote(id) {if (mode === "cloud") await db.doc("notes/" + id).delete(); else {notes = notes.filter(n => n.id !== id); saveLocal(); render()} }
+    const sbf = (p, o) => fetch(SB.url + "/rest/v1/" + p, {...o, headers: {apikey: SB.key, ...(SB.key.startsWith("eyJ") ? {Authorization: "Bearer " + SB.key} : {}), "Content-Type": "application/json"}}).then(async r => {const t = await r.text(); if (!r.ok) throw new Error(t); return t ? JSON.parse(t) : null});
+    let last = "";
+    async function sbLoad() {const r = await sbf("notes?select=*&order=t.desc"); const j = JSON.stringify(r); if (mode === "sb" && j === last) return; last = j; notes = r.map(x => ({...x, desc: x.descr})); mode = "sb"; ready = true; render()}
+    async function sbw(id, o) {await sbf("rpc/save_note", {method: "POST", body: JSON.stringify({k: kv, p_id: id, p_title: o.title, p_url: o.url, p_cat: o.cat, p_emoji: o.emoji || "", p_desc: o.desc || "", p_t: o.t || null})}); await sbLoad()}
+    async function addNote(o) {if (mode === "sb") {await sbw(null, o); return } if (mode === "cloud") await db.collection("notes").add(o); else {notes.unshift({...o, id: "l" + Date.now()}); saveLocal(); render()} }
+    async function updNote(id, o) {if (mode === "sb") {await sbw(id, o); return } if (mode === "cloud") await db.doc("notes/" + id).update(o); else {Object.assign(notes.find(n => n.id === id), o); saveLocal(); render()} }
+    async function delNote(id) {if (mode === "sb") {await sbf("rpc/delete_note", {method: "POST", body: JSON.stringify({k: kv, p_id: id})}); await sbLoad(); return } if (mode === "cloud") await db.doc("notes/" + id).delete(); else {notes = notes.filter(n => n.id !== id); saveLocal(); render()} }
     async function run(fn) {try {await fn()} catch (e) {toast("Could not save. Ask the owner to allow editing for you.")} }
 
     /* access key */
     const sha = async s => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)))].map(b => b.toString(16).padStart(2, "0")).join("");
-    function guard(fn) {if (isOpen()) {fn(); return } pending = fn; $("kerr").textContent = ""; $("key").value = ""; $("kdlg").showModal(); $("key").focus()}
+    function guard(fn) {if (isOpen() && (mode !== "sb" || kv)) {fn(); return } pending = fn; $("kerr").textContent = ""; $("key").value = ""; $("kdlg").showModal(); $("key").focus()}
     $("kok").onclick = async () => {
       let h = ""; try {h = await sha($("key").value.trim())} catch (e) { }
-      if (h === HASH) {const m = +$("remember").value; if (m > 0) {exp = Date.now() + m * 60000; try {localStorage.setItem("js-access", JSON.stringify({h: HASH, exp}))} catch (e) { } } else unlocked = true; lockUI(); $("kdlg").close(); const f = pending; pending = null; if (f) f()}
+      if (h === HASH) {kv = $("key").value.trim(); const m = +$("remember").value; if (m > 0) {exp = Date.now() + m * 60000; try {localStorage.setItem("js-access", JSON.stringify({h: HASH, exp, k: kv}))} catch (e) { } } else unlocked = true; lockUI(); $("kdlg").close(); const f = pending; pending = null; if (f) f()}
       else $("kerr").textContent = "Wrong key. Try again."
     };
     $("key").onkeydown = e => {if (e.key === "Enter") $("kok").click()};
     $("kcancel").onclick = () => {pending = null; $("kdlg").close()};
     function lockUI() {$("lock").hidden = !isOpen()}
-    $("lock").onclick = () => {unlocked = false; exp = 0; try {localStorage.removeItem("js-access")} catch (e) { } lockUI(); toast("Locked. The key is needed again to edit.")};
+    $("lock").onclick = () => {unlocked = false; exp = 0; kv = ""; try {localStorage.removeItem("js-access")} catch (e) { } lockUI(); toast("Locked. The key is needed again to edit.")};
     setInterval(lockUI, 30000); lockUI();
 
     function render() {
@@ -652,7 +658,7 @@
       const c = $("cat").value, s = $("sort").value;
       shown = notes.filter(n => (c === "All" || n.cat === c) && ((n.title || "") + " " + (n.desc || "") + " " + (n.cat || "")).toLowerCase().includes(q));
       shown.sort((a, b) => s === "name" ? a.title.localeCompare(b.title) : s === "new" ? (b.t || 0) - (a.t || 0) : (a.cat || "").localeCompare(b.cat || "") || a.title.localeCompare(b.title));
-      $("count").textContent = shown.length + (shown.length === 1 ? " NOTE" : " NOTES") + " · " + (mode === "cloud" ? "SYNCED ON ALL DEVICES" : "THIS DEVICE ONLY");
+      $("count").textContent = shown.length + (shown.length === 1 ? " NOTE" : " NOTES") + " · " + (mode === "cloud" || mode === "sb" ? "SYNCED ON ALL DEVICES" : "NOT SYNCED · THIS DEVICE ONLY");
       $("grid").innerHTML = shown.length ? shown.map((n, k) => `<article class="cell"><a class="pv" href="${esc(n.url)}" target="_blank" rel="noopener" style="background:${P[pi(n.id)]}" aria-label="Open ${esc(n.title)}"><span>${esc(n.emoji || "📄")}</span></a>
   <div class="info"><div class="top"><div class="nm" title="${esc(n.title)}"><small>${String(k + 1).padStart(3, "0")}</small>${esc(n.title)}</div><div class="tag">${esc(n.cat || "")}</div></div><div class="d">${esc(n.desc || "")}</div></div>
   <div class="act"><a href="${esc(n.url)}" target="_blank" rel="noopener">Open</a><button data-c="${esc(n.id)}">Copy link</button><button data-e="${esc(n.id)}">Edit</button><button class="rm" data-r="${esc(n.id)}">Remove</button></div></article>`).join("") : `<div class="empty">${q ? `No note matches “${esc(q)}”. ` : "No notes yet. "}<button id="again">Add a new note</button></div>`;
@@ -692,6 +698,7 @@
 
     /* connect to the shared database */
     (async () => {
+      if (SB.url && SB.key) {try {await sbLoad(); setInterval(() => {if (!document.hidden) sbLoad().catch(() => { })}, 8000); document.addEventListener("visibilitychange", () => {if (!document.hidden) sbLoad().catch(() => { })}); return } catch (e) { } }
       try {db = typeof claude !== "undefined" ? await claude.use("db") : null} catch (e) {db = null}
       if (!db) {loadLocal(); return }
       setTimeout(() => {if (!ready) loadLocal()}, 10000);
