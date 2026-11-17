@@ -507,6 +507,14 @@
       color: var(--acc)
     }
 
+    .warn {
+      margin: 14px clamp(14px, 3vw, 28px) 0;
+      padding: 10px 12px;
+      border: 1px solid #e5484d;
+      color: #e5484d;
+      font-size: .75rem
+    }
+
     #toast {
       position: fixed;
       bottom: calc(16px + env(safe-area-inset-bottom, 0px));
@@ -572,6 +580,8 @@
       <button class="lock" id="lock" hidden>LOCK NOW</button>
     </div>
   </div>
+  <div class="warn" id="warn" hidden>Not connected to shared storage, so these notes are only on this device. Open this
+    page from your claude.ai link while signed in to Claude to see and edit the shared notes.</div>
   <div class="count" id="count"></div>
   <div class="grid" id="grid"></div>
   <footer><span>MADE BY <b style="color:var(--ink)">@caliisilio</b></span>
@@ -610,7 +620,7 @@
       {title: "Internal", url: "https://notes-by-js.notion.site/ebd/40b51af1748980bca83df0571930ff24", cat: "Internal", emoji: "🔒", desc: "Internal notes.", t: 2}];
     const HASH = "72af8dd0b918a468643f5f3ae6d8573517127e0764471abeb5ed5e9bd7db9006", LS = "js-notes-local";
     /* Own-domain database (Supabase). Fill these two to sync across all devices on your domain. */
-    const SB = {url: "https://jfxaabytuuelyxddwhbb.supabase.co", key: "sb_publishable_g-jS7Q-TlBipiED_pBrFCw_1QrzlyEb"};
+    const SB = {url: "", key: ""};
     const P = [
       "repeating-linear-gradient(45deg,var(--pat) 0 1px,transparent 1px 8px),repeating-linear-gradient(-45deg,var(--pat) 0 1px,transparent 1px 8px)",
       "linear-gradient(var(--pat) 1px,transparent 1px) 0 0/22px 22px,linear-gradient(90deg,var(--pat) 1px,transparent 1px) 0 0/22px 22px",
@@ -658,7 +668,7 @@
       const c = $("cat").value, s = $("sort").value;
       shown = notes.filter(n => (c === "All" || n.cat === c) && ((n.title || "") + " " + (n.desc || "") + " " + (n.cat || "")).toLowerCase().includes(q));
       shown.sort((a, b) => s === "name" ? a.title.localeCompare(b.title) : s === "new" ? (b.t || 0) - (a.t || 0) : (a.cat || "").localeCompare(b.cat || "") || a.title.localeCompare(b.title));
-      $("count").textContent = shown.length + (shown.length === 1 ? " NOTE" : " NOTES") + " · " + (mode === "cloud" || mode === "sb" ? "SYNCED ON ALL DEVICES" : "NOT SYNCED · THIS DEVICE ONLY");
+      $("warn").hidden = mode !== "local"; $("count").textContent = shown.length + (shown.length === 1 ? " NOTE" : " NOTES") + " · " + (mode === "cloud" || mode === "sb" ? "SYNCED ON ALL DEVICES" : "NOT SYNCED · THIS DEVICE ONLY");
       $("grid").innerHTML = shown.length ? shown.map((n, k) => `<article class="cell"><a class="pv" href="${esc(n.url)}" target="_blank" rel="noopener" style="background:${P[pi(n.id)]}" aria-label="Open ${esc(n.title)}"><span>${esc(n.emoji || "📄")}</span></a>
   <div class="info"><div class="top"><div class="nm" title="${esc(n.title)}"><small>${String(k + 1).padStart(3, "0")}</small>${esc(n.title)}</div><div class="tag">${esc(n.cat || "")}</div></div><div class="d">${esc(n.desc || "")}</div></div>
   <div class="act"><a href="${esc(n.url)}" target="_blank" rel="noopener">Open</a><button data-c="${esc(n.id)}">Copy link</button><button data-e="${esc(n.id)}">Edit</button><button class="rm" data-r="${esc(n.id)}">Remove</button></div></article>`).join("") : `<div class="empty">${q ? `No note matches “${esc(q)}”. ` : "No notes yet. "}<button id="again">Add a new note</button></div>`;
