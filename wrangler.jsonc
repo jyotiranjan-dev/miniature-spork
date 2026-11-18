@@ -1,20 +1,14 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "WORKER-NAME",
-  "main": "src/index.ts",
-  "compatibility_date": "2025-02-04",
-  "observability": {
-    "enabled": true
+  "name": "miniature-spork",
+  "main": "worker.js",
+  "compatibility_date": "2025-11-01",
+  "workers_dev": true,
+  "assets": {
+    "directory": ".",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
   },
-
-  // Add this to your wrangler.jsonc
   "kv_namespaces": [
-    {
-      "binding": "KV",
-      "id": "5ba3f529f8db45d3ab861c23fc6f0a24",
-      
-      // Optional: preview_id used when running `wrangler dev` for local dev
-      "preview_id": "<ID_OF_PREVIEW_KV_NAMESPACE_FOR_LOCAL_DEVELOPMENT>"
-    }
+    { "binding": "NOTES", "id": "5ba3f529f8db45d3ab861c23fc6f0a24" }
   ]
 }
