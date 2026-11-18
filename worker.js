@@ -1,5 +1,5 @@
 // Cloudflare Worker: stores all notes as one JSON file and checks the access key on the server.
-// Setup: Workers & Pages > Create > Worker > paste this > Settings > Bindings > add KV namespace with variable name NOTES.
+// Serves the website (index.html) and the notes JSON at /api/notes.
 const KEY_HASH = "72af8dd0b918a468643f5f3ae6d8573517127e0764471abeb5ed5e9bd7db9006";
 const DEFAULTS = [
   {id:"main-notes",title:"Main notes",url:"https://notes-by-js.notion.site/ebd/40651af1748980e286a0f2ff52905e33",cat:"General",emoji:"📓",desc:"Everything starts here.",t:1},
@@ -10,6 +10,8 @@ const sha = async s => [...new Uint8Array(await crypto.subtle.digest("SHA-256", 
 
 export default {
   async fetch(req, env) {
+    const url = new URL(req.url);
+    if (url.pathname !== "/api/notes") return env.ASSETS ? env.ASSETS.fetch(req) : new Response("Not found", {status: 404});
     if (req.method === "OPTIONS") return new Response(null, {headers: cors});
     if (req.method === "GET") {
       const v = await env.NOTES.get("notes");
